@@ -46,5 +46,6 @@ window.addEventListener('message', (e) => {
   try {
     if (e.data.__m3d === 'picked') chrome.runtime.sendMessage({ kind: 'picked', id: e.data.id }).catch(() => {});
     else if (e.data.__m3d === 'pickEnded') chrome.runtime.sendMessage({ kind: 'pickEnded' }).catch(() => {});
+    else if (e.data.__m3d === 'gone') chrome.runtime.sendMessage({ kind: 'gone', id: e.data.id }).catch(() => {});
   } catch (err) {}
 });

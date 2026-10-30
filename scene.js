@@ -4,14 +4,19 @@
   if (!api || !api.registerLive) return;
 
   // ---------- three.js ----------
-  // three (r13x+) avisa cada Scene/WebGLRenderer criado se existir window.__THREE_DEVTOOLS__
-  const pending = new Map(); // scene -> instante em que foi vista
-  const rendered = new WeakSet(); // cenas desenhadas na tela (sem render target)
-  let rendererSeen = false;
-  let registeredCount = 0;
-  const canvasScenes = new WeakMap(); // canvas -> cenas recentes desenhadas por ele (inclui render targets/pós-processamento)
+  // three (r13x+) avisa cada Scene/WebGLRenderer criado se existir window.__THREE_DEVTOOLS__.
+  // Regras para não listar lixo: a cena precisa ter sido desenhada, ter malha real (>= 12 triângulos)
+  // e o canvas precisa estar na página e visível; vale um item por canvas (a cena mais pesada).
+  const MIN_TRIS = 12;
+  const pending = new Map(); // cena -> instante em que foi vista
+  const canvasScenes = new WeakMap(); // canvas -> cenas recentes desenhadas por ele (inclui render targets)
+  const sceneCanvas = new WeakMap(); // cena -> canvas do renderer que a desenhou
   const sceneIds = new WeakMap();
   const glByCanvas = new WeakMap();
+  const live = new Map(); // canvas -> { scene, id, tris, miss }
+  const observed = []; // só para depuração (api.debugScenes)
+  let rendererSeen = false;
+  let registeredCount = 0;
   let timer = 0;
 
   // quad/triângulo de tela cheia com shader próprio (pós-processamento, fundo): não é modelo
@@ -23,27 +28,55 @@
     return tris <= 2 && !!(m && m.isShaderMaterial);
   }
 
-  function countMeshes(scene) {
-    let n = 0;
-    scene.traverse((o) => { if ((o.isMesh || o.isInstancedMesh) && !isTrivialShader(o)) n++; });
-    return n;
+  function sceneStats(scene) {
+    let meshes = 0, tris = 0;
+    scene.traverse((o) => {
+      if (!(o.isMesh || o.isInstancedMesh) || isTrivialShader(o)) return;
+      const g = o.geometry, p = g && g.attributes && g.attributes.position;
+      if (!p) return;
+      const t = (g.index ? g.index.count : p.count) / 3;
+      meshes++;
+      tris += o.isInstancedMesh ? t * o.count : t;
+    });
+    return { meshes, tris: Math.round(tris) };
+  }
+  const countMeshes = (s) => sceneStats(s).meshes;
+
+  function canvasOk(c) {
+    if (!c) return true; // renderer desconhecido: não dá para julgar
+    try {
+      if (!c.isConnected) return false;
+      const r = c.getBoundingClientRect();
+      return r.width >= 100 && r.height >= 100;
+    } catch (e) { return false; }
   }
 
-  function registerScene(s, n) {
+  const slug = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40).replace(/_+$/, '');
+
+  function registerScene(s, st, force) {
     if (sceneIds.has(s)) return sceneIds.get(s);
+    const canvas = sceneCanvas.get(s) || null;
+    const cur = canvas && live.get(canvas);
+    if (cur && !force && cur.tris >= st.tris) return null; // já há uma cena mais pesada neste canvas
+    if (cur) { api.unregisterLive(cur.id); sceneIds.delete(cur.scene); }
     registeredCount++;
+    let size = '';
+    try { const r = canvas.getBoundingClientRect(); size = ' · ' + Math.round(r.width) + '×' + Math.round(r.height); } catch (e) {}
+    const base = slug(s.name) || slug(document.title) || 'cena';
     const id = api.registerLive({
-      type: 'three.js (' + n + ' malhas, exportado ao vivo)',
-      name: (s.name || 'scene') + '_' + registeredCount + '.glb',
+      type: 'three.js · ' + st.tris.toLocaleString('pt-BR') + ' triângulos' + size,
+      name: base + '_' + st.tris + 'tri.glb',
       via: 'three.js',
       build: () => api.exportThree(s)
     });
     sceneIds.set(s, id);
+    if (canvas) live.set(canvas, { scene: s, id, tris: st.tris, miss: 0 });
     return id;
   }
 
   function trackScene(canvas, scene) {
     if (!canvas || !scene) return;
+    sceneCanvas.set(scene, canvas);
     let a = canvasScenes.get(canvas);
     if (!a) { a = []; canvasScenes.set(canvas, a); }
     if (!a.includes(scene)) { a.push(scene); if (a.length > 8) a.shift(); }
@@ -52,15 +85,20 @@
   function poll() {
     const now = Date.now();
     for (const [s, t0] of pending) {
-      // com renderer observado, só cenas realmente desenhadas viram item (ignora RoomEnvironment etc.)
-      if (rendererSeen && !rendered.has(s) && now - t0 < 60000) continue;
-      let n = 0;
-      try { n = countMeshes(s); } catch (e) { pending.delete(s); continue; }
-      if (!n) continue;
+      if (now - t0 > 300000) { pending.delete(s); continue; }
+      if (rendererSeen && !sceneCanvas.has(s)) continue; // ainda não foi desenhada
+      let st;
+      try { st = sceneStats(s); } catch (e) { pending.delete(s); continue; }
+      if (st.tris < MIN_TRIS || !canvasOk(sceneCanvas.get(s))) continue;
       pending.delete(s);
-      registerScene(s, n);
+      registerScene(s, st, false);
     }
-    if (!pending.size) { clearInterval(timer); timer = 0; }
+    // item cujo canvas saiu da página (troca de modelo/rota): some da lista
+    for (const [canvas, e] of live) {
+      if (canvas.isConnected) { e.miss = 0; continue; }
+      if (++e.miss >= 2) { api.unregisterLive(e.id); live.delete(canvas); sceneIds.delete(e.scene); }
+    }
+    if (!pending.size && !live.size) { clearInterval(timer); timer = 0; }
   }
 
   function hookRenderer(r) {
@@ -69,10 +107,7 @@
     rendererSeen = true;
     const orig = r.render;
     r.render = function (scene) {
-      try {
-        trackScene(r.domElement, scene);
-        if (!(r.getRenderTarget && r.getRenderTarget())) rendered.add(scene);
-      } catch (e) {}
+      try { trackScene(r.domElement, scene); } catch (e) {}
       return orig.apply(this, arguments);
     };
   }
@@ -86,10 +121,21 @@
     const o = e.detail;
     if (!o) return;
     if (o.isWebGLRenderer || o.isWebGPURenderer) hookRenderer(o);
-    else if (o.isScene && pending.size < 50) {
+    else if (o.isScene && pending.size < 100) {
       pending.set(o, Date.now());
-      if (!timer) timer = setInterval(poll, 1500);
+      if (observed.length < 200) observed.push(o);
+      if (!timer) timer = setInterval(poll, 2000);
     }
+  });
+
+  // diagnóstico: o que a extensão está vendo (usado em testes)
+  api.debugScenes = () => observed.map((s) => {
+    let st = { meshes: 0, tris: 0 };
+    try { st = sceneStats(s); } catch (e) {}
+    const c = sceneCanvas.get(s);
+    let size = null;
+    try { if (c) { const r = c.getBoundingClientRect(); size = Math.round(r.width) + 'x' + Math.round(r.height); } } catch (e) {}
+    return { name: s.name, meshes: st.meshes, tris: st.tris, drawn: !!c, canvasOk: canvasOk(c), size, listed: sceneIds.has(s) };
   });
 
   // ---------- WebGL puro ----------
@@ -247,7 +293,7 @@
     s.draws.set(key, { geoKey, pos, elem: indexed ? v.elem : null, mode, count, type, offset, model: model ? model.slice() : null });
     if (!s.timer && !s.registered) {
       s.timer = setTimeout(() => {
-        if (registeredCount > 0 || pending.size > 0 || s.registered) return; // cenas three.js já saem com materiais
+        if (registeredCount > 0 || pending.size > 0 || s.registered || !canvasOk(s.canvas)) return; // cenas three.js já saem com materiais
         registerGL(s);
       }, 2500);
     }
@@ -358,13 +404,13 @@
   api.pick = function (canvas, probeOnly) {
     const a = canvasScenes.get(canvas);
     if (a && a.length) {
-      let best = null, bn = 0;
+      let best = null, bst = null;
       for (const sc of a) {
-        let n = 0;
-        try { n = countMeshes(sc); } catch (e) {}
-        if (n > bn) { bn = n; best = sc; }
+        let st = { tris: 0 };
+        try { st = sceneStats(sc); } catch (e) {}
+        if (st.tris > 0 && (!bst || st.tris > bst.tris)) { bst = st; best = sc; }
       }
-      if (best) return probeOnly ? 'three' : { kind: 'three', id: registerScene(best, bn) };
+      if (best) return probeOnly ? 'three' : { kind: 'three', id: registerScene(best, bst, true) };
     }
     const g = glByCanvas.get(canvas);
     if (g && g.draws.size) return probeOnly ? 'webgl' : { kind: 'webgl', id: registerGL(g) };

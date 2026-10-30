@@ -139,3 +139,17 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html') + '?' + qs });
   });
 });
+
+// ---- cena/canvas que saiu da página: tira da lista
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg.kind !== 'gone' || !sender.tab) return;
+  ready.then(() => {
+    const list = tabs[sender.tab.id];
+    if (!list) return;
+    const idx = list.findIndex((i) => i.source === 'page' && i.frameId === sender.frameId && i.id === msg.id);
+    if (idx < 0) return;
+    list.splice(idx, 1);
+    save();
+    badge(sender.tab.id);
+  });
+});

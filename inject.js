@@ -194,7 +194,11 @@
     }, '*');
     return id;
   }
-  Object.defineProperty(window, '__m3dApi', { value: { registerLive, sniffBlob: inspectBlob }, enumerable: false });
+  function unregisterLive(id) {
+    store.delete(id);
+    window.postMessage({ __m3d: 'gone', id }, '*');
+  }
+  Object.defineProperty(window, '__m3dApi', { value: { registerLive, unregisterLive, sniffBlob: inspectBlob }, enumerable: false });
 
   // ---- bytes pedidos pelo viewer da extensão (via content.js)
   window.addEventListener('message', async (e) => {
