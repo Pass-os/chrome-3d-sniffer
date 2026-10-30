@@ -10,7 +10,7 @@
   const MODEL_URL_CT = /^model\//i;
 
   const store = new Map(); // id -> { blob, name }
-  const seen = new Set();
+  const seen = new Map(); // chave url|tamanho -> id
   let seq = 0;
 
   const _createObjectURL = URL.createObjectURL;
@@ -74,23 +74,24 @@
 
   function register(blob, info, url, via) {
     const key = url + '|' + blob.size;
-    if (seen.has(key)) return;
-    seen.add(key);
+    if (seen.has(key)) return seen.get(key);
     const id = ++seq;
+    seen.set(key, id);
     const name = fileName(url, info, id);
     store.set(id, { blob, name });
     window.postMessage({
       __m3d: 'found',
       item: { id, type: info.type, ext: info.ext, size: blob.size, url, name, via, page: location.href }
     }, '*');
+    return id;
   }
 
   async function inspectBlob(blob, url, via) {
-    if (blob.size < 16 || blob.size > MAX) return;
-    if (blob.type && SKIP_CT.test(blob.type)) return;
+    if (blob.size < 16 || blob.size > MAX) return null;
+    if (blob.type && SKIP_CT.test(blob.type)) return null;
     const head = new Uint8Array(await blob.slice(0, SNIFF).arrayBuffer());
     const info = sniff(head, blob.size);
-    if (info) register(blob, info, url, via);
+    return info ? register(blob, info, url, via) : null;
   }
 
   async function inspectResponse(resp, url) {
@@ -193,7 +194,7 @@
     }, '*');
     return id;
   }
-  Object.defineProperty(window, '__m3dApi', { value: { registerLive }, enumerable: false });
+  Object.defineProperty(window, '__m3dApi', { value: { registerLive, sniffBlob: inspectBlob }, enumerable: false });
 
   // ---- bytes pedidos pelo viewer da extensão (via content.js)
   window.addEventListener('message', async (e) => {

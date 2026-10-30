@@ -29,7 +29,8 @@
       "js": [
         "inject.js",
         "glb.js",
-        "scene.js"
+        "scene.js",
+        "picker.js"
       ],
       "world": "MAIN",
       "run_at": "document_start",

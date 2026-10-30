@@ -7,6 +7,7 @@ Extensão Chrome (Manifest V3) que detecta e baixa modelos 3D das páginas, olha
 - **Rede:** intercepta `fetch`, `XMLHttpRequest` e `URL.createObjectURL`, lê os primeiros bytes e identifica o formato por magic number (GLB, glTF, FBX, OBJ, STL, PLY, Draco, USD/USDZ, COLLADA, 3DS, Blender, VOX, ZIP com modelo). Também pega por URL/`Content-Type` via `webRequest`.
 - **three.js:** registra `window.__THREE_DEVTOOLS__`, recebe cada `Scene` criada e exporta a cena ao vivo para GLB (malhas, instâncias, UV, vertex colors, materiais, texturas).
 - **WebGL puro:** hooks em `bufferData`/`vertexAttribPointer`/`draw*` capturam a geometria (só malha, sem textura).
+- **Seletor de elemento** (botão *Selecionar elemento*): como o "inspecionar" do DevTools. Passe o mouse (moldura verde = canvas com three.js/WebGL, azul = elemento com URL de modelo, como `<model-viewer src>`) e clique: captura só aquilo e abre no viewer. Funciona em shadow DOM e iframes; Esc cancela.
 - **Viewer próprio** (botão *Ver*): three.js dentro da extensão; abre GLB (Meshopt), OBJ, STL, PLY, FBX e COLLADA.
 - **Blender** (botão *Blender*): baixa e abre no Blender 5.0 via native host; descomprime Meshopt antes.
 

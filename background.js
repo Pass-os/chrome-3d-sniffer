@@ -123,3 +123,19 @@ chrome.runtime.onMessage.addListener((msg) => {
     });
   }
 });
+
+// ---- seletor de elemento: ao capturar, abre o viewer e encerra o modo nos outros frames
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (!sender.tab || (msg.kind !== 'picked' && msg.kind !== 'pickEnded')) return;
+  const stop = () => chrome.tabs.sendMessage(sender.tab.id, { kind: 'pickStop' }).catch(() => {});
+  if (msg.kind === 'pickEnded') { stop(); return; }
+  ready.then(() => {
+    const it = (tabs[sender.tab.id] || []).find((i) => i.source === 'page' && i.frameId === sender.frameId && i.id === msg.id);
+    stop();
+    if (!it) return;
+    const qs = new URLSearchParams({
+      tab: sender.tab.id, frame: sender.frameId || 0, id: it.id, source: 'page', url: it.url, name: it.name, ext: it.ext
+    });
+    chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html') + '?' + qs });
+  });
+});

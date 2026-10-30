@@ -183,7 +183,13 @@
     scene.updateMatrixWorld(true);
     const objs = [];
     scene.traverseVisible((o) => {
-      if ((o.isMesh || o.isInstancedMesh) && o.geometry && o.geometry.attributes && o.geometry.attributes.position) objs.push(o);
+      if (!((o.isMesh || o.isInstancedMesh) && o.geometry && o.geometry.attributes && o.geometry.attributes.position)) return;
+      // fundo/pós-processamento: quad de até 2 triângulos com shader próprio
+      const pos = o.geometry.attributes.position;
+      const tris = o.geometry.index ? o.geometry.index.count / 3 : pos.count / 3;
+      const m = [].concat(o.material)[0];
+      if (tris <= 2 && m && m.isShaderMaterial) return;
+      objs.push(o);
     });
 
     const model = { meshes: [], nodes: [], materials: [], images: [] };

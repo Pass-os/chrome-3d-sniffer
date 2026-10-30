@@ -9,12 +9,44 @@
   const rendered = new WeakSet(); // cenas desenhadas na tela (sem render target)
   let rendererSeen = false;
   let registeredCount = 0;
+  const canvasScenes = new WeakMap(); // canvas -> cenas recentes desenhadas por ele (inclui render targets/pós-processamento)
+  const sceneIds = new WeakMap();
+  const glByCanvas = new WeakMap();
   let timer = 0;
+
+  // quad/triângulo de tela cheia com shader próprio (pós-processamento, fundo): não é modelo
+  function isTrivialShader(o) {
+    const g = o.geometry, p = g && g.attributes && g.attributes.position;
+    if (!p) return false;
+    const tris = g.index ? g.index.count / 3 : p.count / 3;
+    const m = [].concat(o.material)[0];
+    return tris <= 2 && !!(m && m.isShaderMaterial);
+  }
 
   function countMeshes(scene) {
     let n = 0;
-    scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) n++; });
+    scene.traverse((o) => { if ((o.isMesh || o.isInstancedMesh) && !isTrivialShader(o)) n++; });
     return n;
+  }
+
+  function registerScene(s, n) {
+    if (sceneIds.has(s)) return sceneIds.get(s);
+    registeredCount++;
+    const id = api.registerLive({
+      type: 'three.js (' + n + ' malhas, exportado ao vivo)',
+      name: (s.name || 'scene') + '_' + registeredCount + '.glb',
+      via: 'three.js',
+      build: () => api.exportThree(s)
+    });
+    sceneIds.set(s, id);
+    return id;
+  }
+
+  function trackScene(canvas, scene) {
+    if (!canvas || !scene) return;
+    let a = canvasScenes.get(canvas);
+    if (!a) { a = []; canvasScenes.set(canvas, a); }
+    if (!a.includes(scene)) { a.push(scene); if (a.length > 8) a.shift(); }
   }
 
   function poll() {
@@ -26,13 +58,7 @@
       try { n = countMeshes(s); } catch (e) { pending.delete(s); continue; }
       if (!n) continue;
       pending.delete(s);
-      registeredCount++;
-      api.registerLive({
-        type: 'three.js (' + n + ' malhas, exportado ao vivo)',
-        name: (s.name || 'scene') + '_' + registeredCount + '.glb',
-        via: 'three.js',
-        build: () => api.exportThree(s)
-      });
+      registerScene(s, n);
     }
     if (!pending.size) { clearInterval(timer); timer = 0; }
   }
@@ -43,7 +69,10 @@
     rendererSeen = true;
     const orig = r.render;
     r.render = function (scene) {
-      try { if (!(r.getRenderTarget && r.getRenderTarget())) rendered.add(scene); } catch (e) {}
+      try {
+        trackScene(r.domElement, scene);
+        if (!(r.getRenderTarget && r.getRenderTarget())) rendered.add(scene);
+      } catch (e) {}
       return orig.apply(this, arguments);
     };
   }
@@ -141,6 +170,7 @@
         uni: new Map(), locNames: new WeakMap(), progAttr: new WeakMap()
       };
       states.set(gl, s);
+      try { if (gl.canvas) glByCanvas.set(gl.canvas, s); } catch (e) {}
     }
     return s;
   }
@@ -218,16 +248,22 @@
     if (!s.timer && !s.registered) {
       s.timer = setTimeout(() => {
         if (registeredCount > 0 || pending.size > 0 || s.registered) return; // cenas three.js já saem com materiais
-        s.registered = true;
-        const c = s.canvas;
-        api.registerLive({
-          type: 'WebGL (geometria capturada, sem textura)',
-          name: 'webgl_' + (c ? (c.width || 0) + 'x' + (c.height || 0) : 'canvas') + '.glb',
-          via: 'webgl',
-          build: async () => exportGL(s)
-        });
+        registerGL(s);
       }, 2500);
     }
+  }
+
+  function registerGL(s) {
+    if (s.id != null) return s.id;
+    s.registered = true;
+    const c = s.canvas;
+    s.id = api.registerLive({
+      type: 'WebGL (geometria capturada, sem textura)',
+      name: 'webgl_' + (c ? (c.width || 0) + 'x' + (c.height || 0) : 'canvas') + '.glb',
+      via: 'webgl',
+      build: async () => exportGL(s)
+    });
+    return s.id;
   }
 
   function toTriangles(d, tri) {
@@ -317,6 +353,23 @@
     }
     return { name: 'draw_' + n, pos, prims: [{ idx, mat: 0 }] };
   }
+
+  // Usado pelo seletor de elemento. probeOnly: só diz o que há no canvas, sem registrar item.
+  api.pick = function (canvas, probeOnly) {
+    const a = canvasScenes.get(canvas);
+    if (a && a.length) {
+      let best = null, bn = 0;
+      for (const sc of a) {
+        let n = 0;
+        try { n = countMeshes(sc); } catch (e) {}
+        if (n > bn) { bn = n; best = sc; }
+      }
+      if (best) return probeOnly ? 'three' : { kind: 'three', id: registerScene(best, bn) };
+    }
+    const g = glByCanvas.get(canvas);
+    if (g && g.draws.size) return probeOnly ? 'webgl' : { kind: 'webgl', id: registerGL(g) };
+    return null;
+  };
 
   function patch(proto) {
     if (!proto || proto.__m3dPatched) return;

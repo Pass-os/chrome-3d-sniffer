@@ -64,6 +64,11 @@ async function refresh() {
   render(items || []);
 }
 
+document.getElementById('pick').onclick = async () => {
+  try { await chrome.tabs.sendMessage(tabId, { kind: 'pickStart' }); } catch (e) {}
+  window.close();
+};
+
 document.getElementById('clear').onclick = async () => {
   await chrome.runtime.sendMessage({ kind: 'clear', tabId });
   lastKey = '';

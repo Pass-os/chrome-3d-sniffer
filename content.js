@@ -36,3 +36,15 @@ chrome.runtime.onConnect.addListener((port) => {
     window.postMessage({ __m3d: 'get', id: msg.id, reqId }, '*');
   });
 });
+
+// Seletor de elemento: popup/background -> página (MAIN) e de volta.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg && (msg.kind === 'pickStart' || msg.kind === 'pickStop')) window.postMessage({ __m3d: msg.kind }, '*');
+});
+window.addEventListener('message', (e) => {
+  if (e.source !== window || !e.data) return;
+  try {
+    if (e.data.__m3d === 'picked') chrome.runtime.sendMessage({ kind: 'picked', id: e.data.id }).catch(() => {});
+    else if (e.data.__m3d === 'pickEnded') chrome.runtime.sendMessage({ kind: 'pickEnded' }).catch(() => {});
+  } catch (err) {}
+});
