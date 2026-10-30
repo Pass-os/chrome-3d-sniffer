@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 420px; margin: 0; font: 13px system-ui, sans-serif; background: #1b1d21; color: #e6e6e6; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #2c2f35; }
+  h1 { font-size: 14px; margin: 0; }
+  button { background: #2a7de1; color: #fff; border: 0; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+  button.ghost { background: #2c2f35; }
+  #list { max-height: 420px; overflow: auto; }
+  .item { padding: 9px 12px; border-bottom: 1px solid #2c2f35; display: flex; gap: 8px; align-items: center; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: #9aa0a6; font-size: 11.5px; margin-top: 2px; }
+  .url { color: #6c7178; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #empty { padding: 24px 12px; color: #9aa0a6; text-align: center; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header><h1>3D Model Sniffer</h1><button class="ghost" id="clear">Limpar</button></header>
+<div id="list"></div>
+<script src="popup.js"></script>
+</body>
+</html>

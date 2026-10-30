@@ -1,0 +1,7 @@
+{
+  "name": "com.alex.m3d_blender",
+  "description": "Abre modelos baixados pelo 3D Model Sniffer no Blender",
+  "path": "G:\\Dev\\chrome-3d-sniffer\\native\\host.bat",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://lnghpdmdpipeikpbjmfoicndhpabhnlc/"]
+}

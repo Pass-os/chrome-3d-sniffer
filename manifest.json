@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "3D Model Sniffer",
+  "version": "0.1.0",
+  "description": "Detecta e baixa modelos 3D (GLB, glTF, FBX, OBJ, STL, PLY, USDZ...) olhando os bytes das requisições da página.",
+  "permissions": [
+    "webRequest",
+    "webNavigation",
+    "downloads",
+    "storage",
+    "tabs",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "3D Model Sniffer"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "inject.js",
+        "glb.js",
+        "scene.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlaoOvLICyO/grwNSN0Tdopa4lR2nKQ7C+uHkKmbiD7DN3qurO76h/z91Y4YjB5WZePXN+3ujTQzWCw06EMvl9p2QCVgOuNxE54wr3TuVtifTZ+sAOiSNUejCibhmgvNPz3FsrW26JgldWulNaMGYHmPsz1h72utQytVki2BiVVMeIRmm0fQoYzFjlA6PGqwltZtikC/K3Gbp5XfNUqVL9v4PnHuPlZJ7Fy/lzk6wCk6EiB8TtPUV/fQE9VC9USD1kPwJ2+8gs4i61OH3m50wiL0XxAMkq4bm63WItdACVMHtVZn7UxI2icoKfpI3ANEbH8fAPdbUhwEbGeahNRkJCQIDAQAB",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self' blob:"
+  }
+}

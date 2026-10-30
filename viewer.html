@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>3D Model Sniffer</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1d21; color: #e6e6e6; font: 13px system-ui, sans-serif; }
+  #bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #23262b; border-bottom: 1px solid #2c2f35; flex-wrap: wrap; }
+  #name { font-weight: 600; margin-right: 8px; }
+  #info { color: #9aa0a6; flex: 1; min-width: 160px; }
+  button { background: #2c2f35; color: #e6e6e6; border: 0; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+  button:hover { background: #3a3e46; }
+  #c { display: block; width: 100%; }
+  #status { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #9aa0a6; text-align: center; max-width: 80vw; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="name"></span>
+  <span id="info"></span>
+  <button id="wire">Wireframe</button>
+  <button id="grid">Grade</button>
+  <button id="bg">Fundo</button>
+  <button id="reset">Enquadrar</button>
+  <button id="save">Baixar</button>
+</div>
+<canvas id="c"></canvas>
+<div id="status">Carregando…</div>
+<script src="viewer.js"></script>
+</body>
+</html>
