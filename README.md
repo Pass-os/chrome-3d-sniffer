@@ -7,7 +7,7 @@ Extensão Chrome (Manifest V3) que detecta e baixa modelos 3D das páginas, olha
 - **Rede:** intercepta `fetch`, `XMLHttpRequest` e `URL.createObjectURL`, lê os primeiros bytes e identifica o formato por magic number (GLB, glTF, FBX, OBJ, STL, PLY, Draco, USD/USDZ, COLLADA, 3DS, Blender, VOX, ZIP com modelo). Também pega por URL/`Content-Type` via `webRequest`.
 - **three.js:** registra `window.__THREE_DEVTOOLS__`, recebe cada `Scene` criada e exporta a cena ao vivo para GLB (malhas, instâncias, UV, vertex colors, materiais, texturas).
 - **WebGL puro:** hooks em `bufferData`/`vertexAttribPointer`/`draw*` capturam a geometria (só malha, sem textura).
-- **Viewer próprio** (botão *Ver*): three.js dentro da extensão; abre GLB (Meshopt/Draco), OBJ, STL, PLY, FBX e COLLADA.
+- **Viewer próprio** (botão *Ver*): three.js dentro da extensão; abre GLB (Meshopt), OBJ, STL, PLY, FBX e COLLADA.
 - **Blender** (botão *Blender*): baixa e abre no Blender 5.0 via native host; descomprime Meshopt antes.
 
 ## Instalação
@@ -21,5 +21,6 @@ O ID da extensão é fixado pelo campo `key` do `manifest.json` (`lnghpdmdpipeik
 ## Limites conhecidos
 
 - Renderização em Worker/OffscreenCanvas não é vista pelos hooks da janela principal.
+- O viewer não abre GLB com compressão Draco (o worker do decodificador exige CSP `blob:`, que o Chrome recusa em extensões); use Baixar ou Blender.
 - O fallback WebGL ignora buffers dinâmicos além das primeiras atualizações e não exporta textura nem normais.
 - Falta: download pela extensão (hoje usa `<a download>` na página), three.js sem `__THREE_DEVTOOLS__`, texturas KTX2.

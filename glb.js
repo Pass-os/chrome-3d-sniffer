@@ -48,7 +48,11 @@
         roughnessFactor: m.roughness
       };
       if (m.tex) pbr.baseColorTexture = { index: texIndex(m.tex) };
+      if (m.mrTex) pbr.metallicRoughnessTexture = { index: texIndex(m.mrTex) };
       const out = { name: m.name, pbrMetallicRoughness: pbr, doubleSided: !!m.doubleSided };
+      if (m.normalTex) out.normalTexture = { index: texIndex(m.normalTex), scale: m.normalScale != null ? m.normalScale : 1 };
+      if (m.aoTex) out.occlusionTexture = { index: texIndex(m.aoTex) };
+      if (m.emissiveTex) out.emissiveTexture = { index: texIndex(m.emissiveTex) };
       if (m.alphaMode && m.alphaMode !== 'OPAQUE') out.alphaMode = m.alphaMode;
       if (m.alphaMode === 'MASK') out.alphaCutoff = m.alphaCutoff;
       if (m.emissive && (m.emissive[0] || m.emissive[1] || m.emissive[2])) out.emissiveFactor = m.emissive;
@@ -214,10 +218,19 @@
         const k = Math.min(1, mat.emissiveIntensity != null ? mat.emissiveIntensity : 1);
         m.emissive = [mat.emissive.r * k, mat.emissive.g * k, mat.emissive.b * k];
       }
-      if (mat.map && mat.map.image) {
-        const image = await imageIndex(mat.map.image);
-        if (image >= 0) m.tex = { image, wrapS: WRAP[mat.map.wrapS] || 10497, wrapT: WRAP[mat.map.wrapT] || 10497 };
-      }
+      const texOf = async (map) => {
+        if (!map || !map.image) return null;
+        const image = await imageIndex(map.image);
+        return image >= 0 ? { image, wrapS: WRAP[map.wrapS] || 10497, wrapT: WRAP[map.wrapT] || 10497 } : null;
+      };
+      m.tex = await texOf(mat.map);
+      m.normalTex = await texOf(mat.normalMap);
+      if (m.normalTex && mat.normalScale) m.normalScale = mat.normalScale.x;
+      m.aoTex = await texOf(mat.aoMap);
+      m.emissiveTex = await texOf(mat.emissiveMap);
+      m.mrTex = await texOf(mat.metalnessMap || mat.roughnessMap);
+      // sem mapa de emissão o fator branco do three vira "tudo brilha": só vale o fator se o mapa existir ou for realmente colorido
+      if (mat.emissiveMap && !m.emissiveTex) m.emissive = null;
       model.materials.push(m);
       matIdx.set(mat, model.materials.length - 1);
       return model.materials.length - 1;

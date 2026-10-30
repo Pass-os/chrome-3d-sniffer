@@ -50,8 +50,5 @@
       "match_origin_as_fallback": true
     }
   ],
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlaoOvLICyO/grwNSN0Tdopa4lR2nKQ7C+uHkKmbiD7DN3qurO76h/z91Y4YjB5WZePXN+3ujTQzWCw06EMvl9p2QCVgOuNxE54wr3TuVtifTZ+sAOiSNUejCibhmgvNPz3FsrW26JgldWulNaMGYHmPsz1h72utQytVki2BiVVMeIRmm0fQoYzFjlA6PGqwltZtikC/K3Gbp5XfNUqVL9v4PnHuPlZJ7Fy/lzk6wCk6EiB8TtPUV/fQE9VC9USD1kPwJ2+8gs4i61OH3m50wiL0XxAMkq4bm63WItdACVMHtVZn7UxI2icoKfpI3ANEbH8fAPdbUhwEbGeahNRkJCQIDAQAB",
-  "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self' blob:"
-  }
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlaoOvLICyO/grwNSN0Tdopa4lR2nKQ7C+uHkKmbiD7DN3qurO76h/z91Y4YjB5WZePXN+3ujTQzWCw06EMvl9p2QCVgOuNxE54wr3TuVtifTZ+sAOiSNUejCibhmgvNPz3FsrW26JgldWulNaMGYHmPsz1h72utQytVki2BiVVMeIRmm0fQoYzFjlA6PGqwltZtikC/K3Gbp5XfNUqVL9v4PnHuPlZJ7Fy/lzk6wCk6EiB8TtPUV/fQE9VC9USD1kPwJ2+8gs4i61OH3m50wiL0XxAMkq4bm63WItdACVMHtVZn7UxI2icoKfpI3ANEbH8fAPdbUhwEbGeahNRkJCQIDAQAB"
 }

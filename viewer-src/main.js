@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
@@ -142,11 +141,8 @@ async function getBuffer() {
 const grey = () => new THREE.MeshStandardMaterial({ color: 0xcfd3d8, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
 const text = (buf) => new TextDecoder().decode(buf);
 
-function loadGltf(buf) {
+function loadGltf(buf) { // Draco não é suportado: o worker do decodificador exigiria CSP inseguro (blob:) no manifest
   const loader = new GLTFLoader();
-  const draco = new DRACOLoader();
-  draco.setDecoderPath('draco/');
-  loader.setDRACOLoader(draco);
   loader.setMeshoptDecoder(MeshoptDecoder);
   return new Promise((res, rej) => loader.parse(buf, '', (g) => res([g.scene, g.animations]), rej));
 }
@@ -170,12 +166,6 @@ async function parse(buf, ext) {
     case 'ply': return [geometryToMesh(new PLYLoader().parse(buf))];
     case 'fbx': return [new FBXLoader().parse(buf, ''), []];
     case 'dae': return [new ColladaLoader().parse(text(buf), '').scene];
-    case 'drc': {
-      const d = new DRACOLoader();
-      d.setDecoderPath('draco/');
-      const geo = await new Promise((res, rej) => d.parse(buf, res, rej));
-      return [geometryToMesh(geo)];
-    }
     default: throw new Error('o viewer ainda não abre .' + ext + ' (baixe e abra em outro programa)');
   }
 }
