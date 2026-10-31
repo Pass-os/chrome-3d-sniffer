@@ -13,10 +13,18 @@ function badge(tabId) {
   chrome.action.setBadgeBackgroundColor({ tabId, color: '#2a7de1' }).catch(() => {});
 }
 
-function nameFromUrl(url, ext) {
-  let n = '';
+// "<site>_<modelo>.<ext>": site = página que pediu (ou o host do arquivo), sem "www." e sem o TLD
+function nameFromUrl(url, ext, pageUrl) {
+  let n = '', host = '';
   try { n = decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); } catch (e) {}
-  return n || 'model.' + (ext || 'bin');
+  try { host = new URL(pageUrl || url).hostname; } catch (e) {}
+  const parts = host.replace(/^www\./, '').split('.').filter(Boolean);
+  if (parts.length > 1) parts.pop();
+  const site = (parts.join('_') || 'local').replace(/[^\w-]+/g, '_');
+  const base = n.replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[\\/:*?"<>|]+/g, '_');
+  const tail = '.' + (ext || 'bin');
+  if (!base) return site + '_model' + tail;
+  return base.toLowerCase().startsWith(site.toLowerCase() + '_') ? base + tail : site + '_' + base + tail;
 }
 
 async function add(tabId, item) {
@@ -62,7 +70,7 @@ chrome.webRequest.onHeadersReceived.addListener(
       ext: ext.toLowerCase(),
       size: +h('content-length') || 0,
       url: d.url,
-      name: nameFromUrl(d.url, ext.toLowerCase()),
+      name: nameFromUrl(d.url, ext.toLowerCase(), d.documentUrl || d.initiator),
       via: 'webRequest'
     });
   },

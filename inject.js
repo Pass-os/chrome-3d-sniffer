@@ -63,13 +63,31 @@
     return sniffText(ascii(b, 0, Math.min(b.length, SNIFF)));
   }
 
+  // site de onde veio: host da página (do topo, se estiver num iframe) sem "www." e sem o TLD
+  function siteTag() {
+    let h = location.hostname;
+    try {
+      const ao = location.ancestorOrigins;
+      if (ao && ao.length) h = new URL(ao[ao.length - 1]).hostname || h;
+    } catch (e) {}
+    const parts = h.replace(/^www\./, '').split('.').filter(Boolean);
+    if (parts.length > 1) parts.pop();
+    return (parts.join('_') || 'local').replace(/[^\w-]+/g, '_');
+  }
+
+  // "<site>_<modelo>.<ext>"; sem nome de modelo, "<site>_<id>.<ext>"
+  function withSite(model, ext, id) {
+    const site = siteTag();
+    const base = String(model || '').replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[\\/:*?"<>|]+/g, '_');
+    if (!base) return site + '_' + id + '.' + ext;
+    if (base.toLowerCase().startsWith(site.toLowerCase() + '_')) return base + '.' + ext;
+    return site + '_' + base + '.' + ext;
+  }
+
   function fileName(url, info, id) {
     let name = '';
     try { name = decodeURIComponent(new URL(url, location.href).pathname.split('/').pop() || ''); } catch (e) {}
-    name = name.replace(/[\\/:*?"<>|]+/g, '_');
-    if (!name) return 'model_' + id + '.' + info.ext;
-    if (name.toLowerCase().endsWith('.' + info.ext)) return name;
-    return name.replace(/\.[A-Za-z0-9]{1,5}$/, '') + '.' + info.ext;
+    return withSite(name, info.ext, id);
   }
 
   function register(blob, info, url, via) {
@@ -187,6 +205,7 @@
   // ---- itens "ao vivo" (cena three.js / WebGL): o arquivo só é gerado ao baixar
   function registerLive({ type, name, via, build }) {
     const id = ++seq;
+    name = withSite(name, 'glb', id);
     store.set(id, { build, name });
     window.postMessage({
       __m3d: 'found',
